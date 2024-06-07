@@ -36,7 +36,7 @@
         </div>
     </div>
     <script>
-        const modelPath = "../my_model/";
+        const modelPath = "https://acuamoon.github.io/gongjong/my_model/";
         const modelURL = modelPath + "model.json";
         const metadataURL = modelPath + "metadata.json";
 
@@ -44,12 +44,12 @@
         const result = document.getElementById('result');
         let input = document.getElementById('input');
 
-        tmImage.load(modelURL, metadataURL).then(model => {
+        tmImage.load(modelURL, metadataURL, { credentials: 'same-origin' }).then(model => {
             document.getElementById('loader').style.display = 'none';
             document.getElementById('status').innerHTML = "Model Loading 완료";
 
             function run() {              
-                tmImage.load(modelURL, metadataURL).then(model => {
+                tmImage.load(modelURL, metadataURL, { credentials: 'same-origin' }).then(model => {
                     console.log(model);
                     model.predict(img).then(predictions => {
                         let sortedPredictions = predictions.sort((a, b) => b.probability - a.probability);
