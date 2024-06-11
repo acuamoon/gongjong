@@ -88,18 +88,32 @@
                         context.lineWidth = 2; 
                         const color = Math.floor(Math.random() * 16777215).toString(16);
                         context.rect(...prediction.bbox);
-                        context.font = '16px Arial';
+                        // 텍스트 설정
+                        context.font = '32px Arial'; // context.font 사이즈를 2배 크게 설정
+                        var text = prediction.class + ' ' + parseInt(prediction.score * 100) + '%';
+                        var x = prediction.bbox[0];
+                        var y = prediction.bbox[1];
+
+                        // 텍스트의 크기를 측정
+                        var textWidth = context.measureText(text).width;
+                        var textHeight = parseInt(context.font, 10); // 폰트 크기 가져오기
+
+
                         if (prediction.class === 'person') { // person인 경우
                             context.lineWidth = 4; // 두껍게 설정
-                            context.fillStyle = 'red'; // 배경을 빨간색으로 설정
-                            context.strokeStyle = 'red';
-                            context.fillStyle = 'white'; // 글자색을 흰색으로 설정                           
+                            context.strokeStyle = 'red';                 
                         } else {
-                            context.fillStyle = '#' + color;
-                            context.strokeStyle = '#' + color;
+                            context.strokeStyle = 'blue';
                         }
                         context.stroke();
-                        context.fillText(prediction.class + ' ' + parseInt(prediction.score * 100) + '%', prediction.bbox[0], prediction.bbox[1]);                       
+
+                        var z = context.lineWidth;
+                        context.fillStyle = context.strokeStyle;
+                        context.fillRect(x-(z/2), y - textHeight-z, textWidth, textHeight);
+
+                        // 텍스트 그림
+                        context.fillStyle = 'white'; // 글자색을 흰색으로 설정      
+                        context.fillText(text, x, y-10);                  
                     });
                 });
                 requestAnimationFrame(predict);
