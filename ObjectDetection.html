@@ -85,14 +85,21 @@
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     predictions.forEach(prediction => {
                         context.beginPath();
-                        context.lineWidth = 2;
+                        context.lineWidth = 2; 
                         const color = Math.floor(Math.random() * 16777215).toString(16);
-                        context.strokeStyle = '#' + color;
                         context.rect(...prediction.bbox);
-                        context.stroke();
                         context.font = '16px Arial';
-                        context.fillStyle = '#' + color;
-                        context.fillText(prediction.class + ' ' + parseInt(prediction.score * 100) + '%', prediction.bbox[0], prediction.bbox[1]);
+                        if (prediction.class === 'person') { // person인 경우
+                            context.lineWidth = 4; // 두껍게 설정
+                            context.fillStyle = 'red'; // 배경을 빨간색으로 설정
+                            context.strokeStyle = 'red';
+                            context.fillStyle = 'white'; // 글자색을 흰색으로 설정                           
+                        } else {
+                            context.fillStyle = '#' + color;
+                            context.strokeStyle = '#' + color;
+                        }
+                        context.stroke();
+                        context.fillText(prediction.class + ' ' + parseInt(prediction.score * 100) + '%', prediction.bbox[0], prediction.bbox[1]);                       
                     });
                 });
                 requestAnimationFrame(predict);
@@ -102,3 +109,4 @@
 
 </body>
 </html>
+
