@@ -63,7 +63,7 @@
         const canvas = document.getElementById("canvas");
         const context = canvas.getContext("2d");
 
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
             .then(function (stream) {
                 video.srcObject = stream;
             });
