@@ -34,17 +34,17 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="Classification_GPS.html">Classification</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="Objectdetection.html">ObjectDetection</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="Facedetection.html">FaceDetection</a>
-                    </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="Classification_GPS.html">작업공종분류</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="Objectdetection.html">실시간사물인식</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="Facedetection.html">마스크인식</a>
+                  </li>
                 </ul>
-            </div>
+              </div>
         </div>
     </nav>
 
@@ -56,12 +56,15 @@
             <video id="video" autoplay muted playsinline></video>
             <canvas id="canvas"></canvas>
         </div>
+        <!-- 싸이렌 소리 추가 -->
+        <audio id="siren" src="siren.mp3" preload="auto"></audio>
     </div>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById("canvas");
         const context = canvas.getContext("2d");
+        const siren = document.getElementById('siren');
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
             .then(function (stream) {
@@ -83,6 +86,7 @@
                 model.detect(canvas).then(predictions => {
                     context.clearRect(0, 0, canvas.width, canvas.height);
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    let personDetected = false;
                     predictions.forEach(prediction => {
                         context.beginPath();
                         context.lineWidth = 2; 
@@ -90,7 +94,7 @@
                         context.rect(...prediction.bbox);
                         // 텍스트 설정
                         context.font = '32px Arial'; // context.font 사이즈를 2배 크게 설정
-                        var text = prediction.class + ' ' + parseInt(prediction.score * 100) + '%';
+                        var text = getKoreanName(prediction.class) + ' ' + parseInt(prediction.score * 100) + '%';
                         var x = prediction.bbox[0];
                         var y = prediction.bbox[1];
 
@@ -98,10 +102,10 @@
                         var textWidth = context.measureText(text).width;
                         var textHeight = parseInt(context.font, 10); // 폰트 크기 가져오기
 
-
-                        if (prediction.class === 'person') { // person인 경우
+                        if (getKoreanName(prediction.class) === '사람') { // person인 경우
+                            personDetected = true;
                             context.lineWidth = 4; // 두껍게 설정
-                            context.strokeStyle = 'red';                 
+                            context.strokeStyle = 'red';                                     
                         } else {
                             context.strokeStyle = 'blue';
                         }
@@ -115,10 +119,184 @@
                         context.fillStyle = 'white'; // 글자색을 흰색으로 설정      
                         context.fillText(text, x, y-10);                  
                     });
+                    if (personDetected) {
+                        siren.play();
+                    } else {
+                        siren.pause();
+                        siren.currentTime = 0;
+                    }
                 });
                 requestAnimationFrame(predict);
             }
         });
+
+        function getKoreanName(name) {
+            switch(name) {
+                case 'person':
+                    return '사람';
+                case 'bicycle':
+                    return '자전거';
+                case 'car':
+                    return '자동차';
+                case 'motorcycle':
+                    return '오토바이';
+                case 'airplane':
+                    return '비행기';
+                case 'bus':
+                    return '버스';
+                case 'train':
+                    return '기차';
+                case 'truck':
+                    return '트럭';
+                case 'boat':
+                    return '보트';
+                case 'traffic light':
+                    return '신호등';
+                case 'fire hydrant':
+                    return '소화전';
+                case 'stop sign':
+                    return '정지 표지판';
+                case 'parking meter':
+                    return '주차 미터';
+                case 'bench':
+                    return '벤치';
+                case 'bird':
+                    return '새';
+                case 'cat':
+                    return '고양이';
+                case 'dog':
+                    return '개';
+                case 'horse':
+                    return '말';
+                case 'sheep':
+                    return '양';
+                case 'cow':
+                    return '소';
+                case 'elephant':
+                    return '코끼리';
+                case 'bear':
+                    return '곰';
+                case 'zebra':
+                    return '얼룩말';
+                case 'giraffe':
+                    return '기린';
+                case 'backpack':
+                    return '배낭';
+                case 'umbrella':
+                    return '우산';
+                case 'handbag':
+                    return '핸드백';
+                case 'tie':
+                    return '넥타이';
+                case 'suitcase':
+                    return '여행가방';
+                case 'frisbee':
+                    return '프리스비';
+                case 'skis':
+                    return '스키';
+                case 'snowboard':
+                    return '스노보드';
+                case 'sports ball':
+                    return '스포츠 공';
+                case 'kite':
+                    return '연';
+                case 'baseball bat':
+                    return '야구 방망이';
+                case 'baseball glove':
+                    return '야구 글러브';
+                case 'skateboard':
+                    return '스케이트보드';
+                case 'surfboard':
+                    return '서핑 보드';
+                case 'tennis racket':
+                    return '테니스 라켓';
+                case 'bottle':
+                    return '병';
+                case 'wine glass':
+                    return '와인 잔';
+                case 'cup':
+                    return '컵';
+                case 'fork':
+                    return '포크';
+                case 'knife':
+                    return '칼';
+                case 'spoon':
+                    return '숟가락';
+                case 'bowl':
+                    return '그릇';
+                case 'banana':
+                    return '바나나';
+                case 'apple':
+                    return '사과';
+                case 'sandwich':
+                    return '샌드위치';
+                case 'orange':
+                    return '오렌지';
+                case 'broccoli':
+                    return '브로콜리';
+                case 'carrot':
+                    return '당근';
+                case 'hot dog':
+                    return '핫도그';
+                case 'pizza':
+                    return '피자';
+                case 'donut':
+                    return '도넛';
+                case 'cake':
+                    return '케이크';
+                case 'chair':
+                    return '의자';
+                case 'couch':
+                    return '소파';
+                case 'potted plant':
+                    return '화분';
+                case 'bed':
+                    return '침대';
+                case 'dining table':
+                    return '식탁';
+                case 'toilet':
+                    return '화장실';
+                case 'tv':
+                    return '텔레비전';
+                case 'laptop':
+                    return '노트북';
+                case 'mouse':
+                    return '마우스';
+                case 'remote':
+                    return '리모컨';
+                case 'keyboard':
+                    return '키보드';
+                case 'cell phone':
+                    return '휴대폰';
+                case 'microwave':
+                    return '전자레인지';
+                case 'oven':
+                    return '오븐';
+                case 'toaster':
+                    return '토스터';
+                case 'sink':
+                    return '싱크대';
+                case 'refrigerator':
+                    return '냉장고';
+                case 'book':
+                    return '책';
+                case 'clock':
+                    return '시계';
+                case 'vase':
+                    return '꽃병';
+                case 'scissors':
+                    return '가위';
+                case 'teddy bear':
+                    return '곰 인형';
+                case 'hair drier':
+                    return '헤어 드라이기';
+                case 'toothbrush':
+                    return '칫솔';
+                default:
+                    return name;
+            }
+        }
+        
     </script>
 
 </body>
