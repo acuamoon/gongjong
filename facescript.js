@@ -24,32 +24,31 @@ function webCam() {
 }
 
 video.addEventListener("play", () => {
-  const canvas = faceapi.createCanvasFromMedia(video);
+  const canvas = document.getElementById('canvas');
+  const displaySize = { width: video.videoWidth, height: video.videoHeight };
+  canvas.width = displaySize.width;
+  canvas.height = displaySize.height;
   
-  document.body.append(canvas);
-
-  faceapi.matchDimensions(canvas, { height: video.height, width: video.width });
+  faceapi.matchDimensions(canvas, displaySize);
 
   setInterval(async () => {
     const detection = await faceapi
       .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
-      .withFaceExpressions().withAgeAndGender();
+      .withFaceExpressions()
+      .withAgeAndGender();
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
 
-    const resizedWindow = faceapi.resizeResults(detection, {
-      height: video.height,
-      width: video.width,
-    });
+    const resizedWindow = faceapi.resizeResults(detection, displaySize);
 
     faceapi.draw.drawDetections(canvas, resizedWindow);
-    // faceapi.draw.drawFaceLandmarks(canvas, resizedWindow);
+    faceapi.draw.drawFaceLandmarks(canvas, resizedWindow);
     faceapi.draw.drawFaceExpressions(canvas, resizedWindow);
 
     resizedWindow.forEach((detection) => {
       const box = detection.detection.box;
       const drawBox = new faceapi.draw.DrawBox(box, {
-        label: Math.round(detection.age) + "세" + (detection.gender === 'male' ? ' 남자' : ' 여자'),
+        label: Math.round(detection.age) + "세 " + (detection.gender === 'male' ? '남자' : '여자'),
       });
       drawBox.draw(canvas);
     });
