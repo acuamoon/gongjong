@@ -1,11 +1,12 @@
 const video = document.getElementById("video");
+const MODEL_URL = 'https://acuamoon.github.io/gongjong/face_models';
 
 Promise.all([
-  faceapi.nets.tinyFaceDetector.loadFromUri("/face_models"),
-  faceapi.nets.faceLandmark68Net.loadFromUri("/face_models"),
-  faceapi.nets.faceRecognitionNet.loadFromUri("/face_models"),
-  faceapi.nets.faceExpressionNet.loadFromUri("/face_models"),
-  faceapi.nets.ageGenderNet.loadFromUri("/face_models"),
+  faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+  faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+  faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+  faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+  faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
 ]).then(webCam);
 
 function webCam() {
