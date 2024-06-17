@@ -1,5 +1,5 @@
 const video = document.getElementById("video");
-const MODEL_URL = 'https://github.com/acuamoon/gongjong/tree/main/face_models';
+const MODEL_URL = 'https://github.com/acuamoon/gongjong/face_models';
 
 Promise.all([
   faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
