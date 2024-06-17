@@ -12,7 +12,9 @@
         .video-container {
             position: relative;
             width: 100%;
-            padding-bottom: 80%;  /* 5:4 비율 */
+            max-width: 640px;
+            margin: 0 auto; /* 중앙 정렬 */
+            height: auto;
         }
 
         video, canvas {
@@ -20,7 +22,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
+            height: auto;
         }
     </style>
 </head>
@@ -53,7 +55,7 @@
             <h2 class="text-black">Face Detection</h2>
         </div>
         <div class="video-container">
-            <video id="video" width="640" height="480" autoplay muted></video>
+            <video id="video" autoplay muted></video>
             <canvas id="canvas"></canvas>
         </div>
     </div>
