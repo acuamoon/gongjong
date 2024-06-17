@@ -1,5 +1,9 @@
 const video = document.getElementById("video");
+const frontCameraButton = document.getElementById("frontCamera");
+const backCameraButton = document.getElementById("backCamera");
 const MODEL_URL = "https://acuamoon.github.io/gongjong/face_models/";
+
+let currentStream;
 
 Promise.all([
   faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -10,17 +14,28 @@ Promise.all([
 ]).then(webCam);
 
 
-function webCam() {
+function startVideo() {
+  selectCamera("user"); // 기본적으로 전면 카메라 사용
+}
+
+function selectCamera(facingMode) {
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+
   navigator.mediaDevices
     .getUserMedia({
-      video: true,
+      video: {
+        facingMode: facingMode,
+      },
       audio: false,
     })
     .then((stream) => {
+      currentStream = stream;
       video.srcObject = stream;
     })
     .catch((error) => {
-      console.log(error);
+      console.error(error);
     });
 }
 
@@ -75,3 +90,4 @@ video.addEventListener("play", () => {
     console.log(detections);
   }, 100);
 });
+
