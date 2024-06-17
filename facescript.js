@@ -11,7 +11,7 @@ Promise.all([
   faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
   faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
   faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
-]).then(webCam);
+]).then(startVideo);
 
 
 function startVideo() {
