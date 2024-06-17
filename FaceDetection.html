@@ -24,6 +24,20 @@
             width: 100%;
             height: auto;
         }
+
+        .btn-container {
+            position: sticky;
+            top: 0;
+            z-index: 1000; /* 버튼이 항상 최상단에 보이도록 */
+            margin-top: 10px;
+            margin-bottom: 20px; /* 버튼과 비디오 사이에 간격 추가 */
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
     </style>
 </head>
 
@@ -53,6 +67,12 @@
     <div class="container-fluid">
         <div class="col text-center">
             <h2 class="text-black">Face Detection</h2>
+        </div>
+        <div class="btn-container">
+            <div class="btn-group">
+                <button id="frontCamera" class="btn btn-primary">전면 카메라</button>
+                <button id="backCamera" class="btn btn-secondary">후면 카메라</button>
+            </div>
         </div>
         <div class="video-container">
             <video id="video" autoplay muted></video>
