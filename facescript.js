@@ -53,13 +53,13 @@ video.addEventListener("play", () => {
         .sort((a, b) => b[1] - a[1])
         .map(([emotion, score]) => {
           switch (emotion) {
-            case 'neutral': return '😐';
-            case 'happy': return '😊';
-            case 'sad': return '😢';
-            case 'angry': return '😠';
-            case 'fearful': return '😨';
-            case 'disgusted': return '🤢';
-            case 'surprised': return '😮';
+            case 'neutral': return '[평온]';
+            case 'happy': return '[행복]';
+            case 'sad': return '[슬픔]';
+            case 'angry': return '[분노]';
+            case 'fearful': return '[공포]';
+            case 'disgusted': return '[혐오]';
+            case 'surprised': return '[놀람]';
             default: return '';
           }
         });
