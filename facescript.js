@@ -81,13 +81,15 @@ video.addEventListener("play", () => {
 
       const emotionText = emotions[0]; // 가장 높은 감정 상태
 
-      const drawBox = new faceapi.draw.DrawBox(box, {
+     const drawBox = new faceapi.draw.DrawBox(box, {
         label: `${Math.round(age)}세 ${gender === 'male' ? '남자 ' : '여자 '} ${emotionText}`,
         drawOptions: {
-          fontSize: 25, // 라벨 글꼴 크기를 20으로 설정 (원하는 크기로 변경 가능)
-          lineWidth: 4 // 박스 선 두께를 2로 설정 (원하는 크기로 변경 가능)
+          fontSize: 20, // 라벨 글꼴 크기를 20으로 설정 (원하는 크기로 변경 가능)
+          lineWidth: 2 // 박스 선 두께를 2로 설정 (원하는 크기로 변경 가능)
         }
       });
+      drawBox.draw(canvas);
+    });
 
     console.log(detections);
   }, 1000);
