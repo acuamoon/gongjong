@@ -83,11 +83,12 @@ video.addEventListener("play", () => {
 
       const drawBox = new faceapi.draw.DrawBox(box, {
         label: `${Math.round(age)}세 ${gender === 'male' ? '남자 ' : '여자 '} ${emotionText}`,
+        fontSize: 30 // label 사이즈 크게
       });
       drawBox.draw(canvas);
     });
 
     console.log(detections);
-  }, 100);
+  }, 2500);
 });
 
