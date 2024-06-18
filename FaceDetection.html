@@ -9,6 +9,30 @@
     <script defer src="face-api.min.js"></script>
     <script defer src="facescript.js"></script>
     <style>
+        .custom-font {
+          font-family: 'Montserrat', sans-serif;
+          font-weight: bold;
+        }
+        .navbar-bg {
+          background: linear-gradient(45deg, #007bff, #6610f2);
+        }
+        .content-area {
+          background: #f8f9fa;
+          border-radius: 15px;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .custom-card {
+          border: none;
+          border-radius: 15px;
+          overflow: hidden;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          transition: transform 0.2s;
+        }
+        .custom-card:hover {
+          transform: translateY(-5px);
+        }
+    </style>    
+    <style>
         .video-container {
             position: relative;
             width: 100%;
