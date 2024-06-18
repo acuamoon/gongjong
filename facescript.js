@@ -89,6 +89,6 @@ video.addEventListener("play", () => {
     });
 
     console.log(detections);
-  }, 3500);
+  }, 100);
 });
 
