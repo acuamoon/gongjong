@@ -9,30 +9,6 @@
     <script defer src="face-api.min.js"></script>
     <script defer src="facescript.js"></script>
     <style>
-        .custom-font {
-          font-family: 'Montserrat', sans-serif;
-          font-weight: bold;
-        }
-        .navbar-bg {
-          background: linear-gradient(45deg, #007bff, #6610f2);
-        }
-        .content-area {
-          background: #f8f9fa;
-          border-radius: 15px;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .custom-card {
-          border: none;
-          border-radius: 15px;
-          overflow: hidden;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-          transition: transform 0.2s;
-        }
-        .custom-card:hover {
-          transform: translateY(-5px);
-        }
-    </style>    
-    <style>
         .video-container {
             position: relative;
             width: 100%;
@@ -66,27 +42,27 @@
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark navbar-bg fixed-top">
-    <div class="container">
-      <a class="navbar-brand custom-font" href="index.html">Smart AI [Construction]</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="Classification_GPS.html">작업공종분류</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="ObjectDetection.html">실시간사물인식</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="FaceDetection.html">얼굴인식</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Smart AI [Construction]</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                  <li class="nav-item">
+                    <a class="nav-link" href="Classification_GPS.html">작업공종분류</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="Objectdetection.html">실시간사물인식</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="Facedetection.html">얼굴인식</a>
+                  </li>
+                </ul>
+              </div>
+        </div>
+    </nav>
 
     <div class="container-fluid">
         <div class="col text-center">
