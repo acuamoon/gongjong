@@ -9,69 +9,33 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
     <title>Object Detection</title>
-      <style>
-    .custom-font {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: bold;
-    }
-    .navbar-bg {
-      background: linear-gradient(45deg, #007bff, #6610f2);
-    }
-    .content-area {
-      background: #f8f9fa;
-      border-radius: 15px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .custom-card {
-      border: none;
-      border-radius: 15px;
-      overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-    }
-    .custom-card:hover {
-      transform: translateY(-5px);
-    }
-  </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark navbar-bg fixed-top">
-    <div class="container">
-      <a class="navbar-brand custom-font" href="index.html">Smart AI [Construction]</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="Classification_GPS.html">작업공종분류</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="ObjectDetection.html">실시간사물인식</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="FaceDetection.html">얼굴인식</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
+    <div id="nav-placeholder"></div>
+    <script> 
+        fetch('nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+    </script>
 
-    <div class="container-fluid">
-        <div class="row text-center">
-            <div class="col">
-                <h2 class="text-black">작업공종 Classification</h2>
-            </div>
-            <div>    
-                <p id="status">Model Loading...</p>
-                <div class="spinner-border text-primary" id="loader">
+    <div class="container mt-2">
+        <div class="row justify-content-center text-center">
+            <div class="col-md-8">
+                <h2 class="text-primary fw-bold mb-4">Image Classification</h2>
+                <p id="status" class="text-muted">모델 로딩 중...</p>
+                <div class="spinner-border text-primary" id="loader" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
-                <div class="card">
-                    <input class="btn btn-outline-secondary" id="input" type="file" name="file" accept="image/*" />
-                    <img id="img"></img>
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <input class="btn btn-outline-secondary" id="input" type="file" name="file" accept="image/*" />
+                    </div>
+                    <img id="img" class="card-img-top"/>
                     <div class="card-body">
-                        <h1 id="gps" class="bg-danger text-white" style="font-size: medium;"></h1>
-                        <h1 id="result"></h1>
+                        <h5 id="gps" class="bg-danger text-white p-2 rounded" style="font-size: medium;"></h5>
+                        <div id="result"></div>
                     </div>
                 </div>
             </div>
@@ -79,7 +43,7 @@
     </div>
 
     <script>
-        const modelPath = "https://acuamoon.github.io/gongjong/my_model/";
+        const modelPath = "../my_model/";
         const modelURL = modelPath + "model.json";
         const metadataURL = modelPath + "metadata.json";
 
@@ -89,11 +53,10 @@
 
         tmImage.load(modelURL, metadataURL, { credentials: 'same-origin' }).then(model => {
             document.getElementById('loader').style.display = 'none';
-            document.getElementById('status').innerHTML = "Model Loading 완료";
+            document.getElementById('status').innerHTML = "카메라로 찍거나 찍어놓은 사진을 선택하세요";
 
             function run() {              
                 tmImage.load(modelURL, metadataURL, { credentials: 'same-origin' }).then(model => {
-                    console.log(model);
                     model.predict(img).then(predictions => {
                         let filteredPredictions = predictions.filter(prediction => (prediction.probability * 100).toFixed(2) > 0.00);
                         let sortedPredictions = filteredPredictions.sort((a, b) => b.probability - a.probability);
@@ -111,12 +74,10 @@
                     const lat = EXIF.getTag(this, "GPSLatitude");
                     const lon = EXIF.getTag(this, "GPSLongitude");
 
-                    console.log(EXIF.getAllTags(this));                    
-                    
-                    if (!isNaN(lat) && !isNaN(lon)) {
+                    if (lat && lon) {
                         const latitude = convertDMSToDD(lat[0], lat[1], lat[2], EXIF.getTag(this, "GPSLatitudeRef"));
                         const longitude = convertDMSToDD(lon[0], lon[1], lon[2], EXIF.getTag(this, "GPSLongitudeRef"));
-                        document.getElementById('gps').innerHTML = '<span">사진-> 위도: ' + latitude + ', 경도: ' + longitude + '</span>';
+                        document.getElementById('gps').innerHTML = '<span>사진-> 위도: ' + latitude + ', 경도: ' + longitude + '</span>';
                     } else {
                         showCurrentLocation();
                     }
@@ -136,7 +97,7 @@
                 navigator.geolocation.getCurrentPosition(function(position) {
                     const latitude = position.coords.latitude;
                     const longitude = position.coords.longitude;
-                    document.getElementById('gps').innerHTML = '<span">GPS-> 위도: ' + latitude + ', 경도: ' + longitude + '</span>';
+                    document.getElementById('gps').innerHTML = '<span>GPS-> 위도: ' + latitude + ', 경도: ' + longitude + '</span>';
                 });
             }
 
@@ -151,5 +112,4 @@
         });
     </script>
 </body>
-
 </html>
