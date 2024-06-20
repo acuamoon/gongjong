@@ -42,43 +42,33 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="index.html">Smart AI [Construction]</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                  <li class="nav-item">
-                    <a class="nav-link" href="Classification_GPS.html">작업공종분류</a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="ObjectDetection.html">실시간사물인식</a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="FaceDetection.html">얼굴인식</a>
-                  </li>
-                </ul>
-              </div>
-        </div>
-    </nav>
+        <div id="nav-placeholder"></div>
+            <script>
+                fetch('nav.html')
+                    .then(response => response.text())
+                    .then(data => {
+                        document.getElementById('nav-placeholder').innerHTML = data;
+                    });
+            </script>
 
-    <div class="container-fluid">
-        <div class="col text-center">
-            <h2 class="text-black">Face Detection</h2>
-        </div>
-        <div class="btn-container">
-            <div class="btn-group">
-                <button id="frontCamera" class="btn btn-primary" onclick="selectCamera('user')">전면 카메라</button>
-                <button id="backCamera" class="btn btn-secondary" onclick="selectCamera('environment')">후면 카메라</button>
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col text-center mt-2 mb-2">
+                    <h2 class="text-primary fw-bold">Face Detection</h2>
+                    <p class="text-secondary">카메라를 선택하여 얼굴을 감지하세요</p>
+                </div>
+            </div>
+            <div class="btn-container">
+                <div class="btn-group">
+                    <button id="frontCamera" class="btn btn-outline-primary" onclick="selectCamera('user')">전면 카메라</button>
+                    <button id="backCamera" class="btn btn-outline-secondary" onclick="selectCamera('environment')">후면 카메라</button>
+                </div>
+            </div>
+            <div class="video-container">
+                <video id="video" autoplay muted></video>
+                <canvas id="canvas"></canvas>
             </div>
         </div>
-        <div class="video-container">
-            <video id="video" autoplay muted></video>
-            <canvas id="canvas"></canvas>
-        </div>
     </div>
-    
 </body>
 </html>

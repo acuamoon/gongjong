@@ -26,38 +26,28 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="index.html">Smart AI [Construction]</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                  <li class="nav-item">
-                    <a class="nav-link" href="Classification_GPS.html">작업공종분류</a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="ObjectDetection.html">실시간사물인식</a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="FaceDetection.html">얼굴인식</a>
-                  </li>
-                </ul>
-              </div>
-        </div>
-    </nav>
+    <div id="nav-placeholder"></div>
+    <script>
+        fetch('nav.html')
+          .then(response => response.text())
+          .then(data => {
+              document.getElementById('nav-placeholder').innerHTML = data;
+          });
+    </script>
 
     <div class="container-fluid">
-        <div class="col text-center">
-            <h2 class="text-black">Object Detection</h2>
+        <div class="row justify-content-center">
+            <div class="col text-center mt-2 mb-2">
+                <h2 class="text-primary fw-bold">Object Detection</h2>
+                <p class="text-secondary">감지하고자 하는 부분으로 카메라를 조정하세요</p>
+            </div>
         </div>
         <div class="video-container">
             <video id="video" autoplay muted playsinline></video>
             <canvas id="canvas"></canvas>
         </div>
         <!-- 싸이렌 소리 추가 -->
-        <audio id="siren" src="https://acuamoon.github.io/gongjong/siren.mp3" preload="auto"></audio>
+        <audio id="siren" src="siren.mp3" preload="auto"></audio>
     </div>
 
     <script>

@@ -1,18 +1,16 @@
 const video = document.getElementById("video");
 const frontCameraButton = document.getElementById("frontCamera");
 const backCameraButton = document.getElementById("backCamera");
-const MODEL_URL = "https://acuamoon.github.io/gongjong/face_models/";
 
 let currentStream;
 
 Promise.all([
-  faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-  faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-  faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-  faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-  faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
+  faceapi.nets.tinyFaceDetector.loadFromUri("/face_models"),
+  faceapi.nets.faceLandmark68Net.loadFromUri("/face_models"),
+  faceapi.nets.faceRecognitionNet.loadFromUri("/face_models"),
+  faceapi.nets.faceExpressionNet.loadFromUri("/face_models"),
+  faceapi.nets.ageGenderNet.loadFromUri("/face_models"),
 ]).then(startVideo);
-
 
 function startVideo() {
   selectCamera("user"); // 기본적으로 전면 카메라 사용
@@ -58,7 +56,7 @@ video.addEventListener("play", () => {
     const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
     faceapi.draw.drawDetections(canvas, resizedDetections);
-    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+    // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
     resizedDetections.forEach((detection) => {
       const { age, gender, expressions, detection: { box } } = detection;
@@ -80,18 +78,18 @@ video.addEventListener("play", () => {
         });
 
       const emotionText = emotions[0]; // 가장 높은 감정 상태
-
-     const drawBox = new faceapi.draw.DrawBox(box, {
+ 
+      const drawBox = new faceapi.draw.DrawBox(box, {
         label: `${Math.round(age)}세 ${gender === 'male' ? '남자 ' : '여자 '} ${emotionText}`,
         drawOptions: {
-          fontSize: 30, // 라벨 글꼴 크기를 20으로 설정 (원하는 크기로 변경 가능)
+          fontSize: 20, // 라벨 글꼴 크기를 20으로 설정 (원하는 크기로 변경 가능)
           lineWidth: 2 // 박스 선 두께를 2로 설정 (원하는 크기로 변경 가능)
         }
       });
       drawBox.draw(canvas);
     });
 
-    console.log(detections);
+    // console.log(detections);
   }, 1000);
 });
 
