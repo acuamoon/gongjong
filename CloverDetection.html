@@ -7,20 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
     <title>Clover Detection</title>
-    <style>
-        .card-body {
-            overflow: hidden; /* 카드 바디 영역을 넘어가는 부분 숨기기 */
-            width: 100%; /* 카드 바디가 가로 전체를 차지하도록 설정 */
-            height: auto; /* 높이는 자동으로 조정 */
-        }
 
-        #uploadedImage {
-            max-width: 100%; /* 카드 바디의 너비에 맞게 이미지의 최대 너비 조정 */
-            height: auto; /* 비율을 유지하며 높이 자동 조정 */
-            display: block; /* 이미지가 블록 요소로 취급되도록 설정 */
-            margin: 0 auto; /* 중앙 정렬 */
-        }
-    </style>
 </head>
 <body>
     <div id="nav-placeholder"></div>
@@ -48,10 +35,7 @@
                         </div>
                     </div>
                     <img id="img" class="card-img-top"/>
-                    <div class="card-body">
-                        <img id="uploadedImage" class="card-img-top" style="max-width: 100%; height: auto;"/>
-                        <div id="result"></div>
-                    </div>
+                    <div id="result"></div>
                 </div>
             </div>
         </div>
@@ -83,22 +67,36 @@
         function drawBoxes(img, predictions) {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
-            canvas.width = img.width;
-            canvas.height = img.height;
-
-            ctx.drawImage(img, 0, 0, img.width, img.height);
-
+        
+            // 결과 영역의 너비
+            const resultWidth = document.getElementById("result").clientWidth;
+        
+            // 이미지의 너비가 결과의 너비보다 큰 경우
+            if (img.width > resultWidth) {
+                canvas.width = resultWidth;
+                canvas.height = (img.height * resultWidth) / img.width; // 비율 유지
+            } else {
+                canvas.width = img.width;
+                canvas.height = img.height;
+            }
+        
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height); // 캔버스에 이미지 그리기
+        
             predictions.forEach(pred => {
                 if (pred.confidence >= confidenceThreshold) {
                     ctx.strokeStyle = "#FF0000";
                     ctx.lineWidth = 3;
-                    ctx.strokeRect(pred.x - pred.width/2, pred.y - pred.height/2, pred.width, pred.height);
+                    ctx.strokeRect(
+                        (pred.x - pred.width / 2) * (canvas.width / img.width),
+                        (pred.y - pred.height / 2) * (canvas.height / img.height),
+                        pred.width * (canvas.width / img.width),
+                        pred.height * (canvas.height / img.height)
+                    );
                 }
-            });
-
+            });      
             return canvas;
         }
-
+       
         // 결과 업데이트 함수
         async function updateResult() {
             if (!lastUploadedImage) return;
