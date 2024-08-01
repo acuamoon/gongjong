@@ -7,6 +7,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
     <title>Clover Detection</title>
+    <style>
+        .card-body {
+            overflow: hidden; /* 카드 바디 영역을 넘어가는 부분 숨기기 */
+        }
+
+        #uploadedImage {
+            max-width: 100%; /* 카드의 너비를 넘지 않게 설정 */
+            height: auto; /* 비율을 유지하며 높이 자동 조정 */
+        }
+    </style>
 </head>
 <body>
     <div id="nav-placeholder"></div>
@@ -33,8 +43,11 @@
                             <input type="range" id="confidenceSlider" min="0" max="100" value="80">
                         </div>
                     </div>
-                    <img id="imageUpload" class="card-img-top"/>
-                    <div id="result"></div>
+                    <img id="img" class="card-img-top"/>
+                    <div class="card-body">
+                        <img id="uploadedImage" class="card-img-top" style="max-width: 100%; height: auto;"/>
+                        <div id="result"></div>
+                    </div>
                 </div>
             </div>
         </div>
