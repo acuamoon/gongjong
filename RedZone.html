@@ -39,21 +39,8 @@
             <div class="col text-center mt-2 mb-2">
                 <h2 class="text-primary fw-bold">Red Zone Detection</h2>
                 <p class="text-secondary">감지하고자 하는 부분으로 카메라를 조정하세요</p>
-                <button id="drawButton" class="btn btn-primary mb-2">영역 그리기</button>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col">
-                <div class="input-group mb-3">
-                    <span class="input-group-text">X1</span>
-                    <input type="number" class="form-control" id="boxX1">
-                    <span class="input-group-text">Y1</span>
-                    <input type="number" class="form-control" id="boxY1">
-                    <span class="input-group-text">X2</span>
-                    <input type="number" class="form-control" id="boxX2">
-                    <span class="input-group-text">Y2</span>
-                    <input type="number" class="form-control" id="boxY2">
-                </div>
+                <button id="drawButton" class="btn btn-primary mb-2">박스 그리기</button>
+                <button id="clearButton" class="btn btn-secondary mb-2">지우기</button>
             </div>
         </div>
         <div class="video-container">
@@ -70,13 +57,10 @@
         const context = canvas.getContext("2d");
         const siren = document.getElementById('siren');
         const drawButton = document.getElementById('drawButton');
-        const boxX1 = document.getElementById('boxX1');
-        const boxY1 = document.getElementById('boxY1');
-        const boxX2 = document.getElementById('boxX2');
-        const boxY2 = document.getElementById('boxY2');
+        const clearButton = document.getElementById('clearButton');
 
         let isDrawing = false;
-        let clickCount = 0;
+        let startX, startY;
         let userBox = null;
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
@@ -94,58 +78,49 @@
 
         drawButton.addEventListener('click', () => {
             isDrawing = true;
-            clickCount = 0;
             drawButton.disabled = true;
         });
 
-        canvas.addEventListener('click', (e) => {
-            if (isDrawing) {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                if (clickCount === 0) {
-                    userBox = [x, y, x, y];
-                    clickCount++;
-                } else if (clickCount === 1) {
-                    userBox[2] = x;
-                    userBox[3] = y;
-                    isDrawing = false;
-                    drawButton.disabled = false;
-                    updateInputFields();
-                }
-            }
+        clearButton.addEventListener('click', () => {
+            userBox = null;
+            drawButton.disabled = false;
         });
 
-        function updateInputFields() {
-            if (userBox) {
-                boxX1.value = Math.round(userBox[0]);
-                boxY1.value = Math.round(userBox[1]);
-                boxX2.value = Math.round(userBox[2]);
-                boxY2.value = Math.round(userBox[3]);
-            }
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDrawing);
+
+        function startDrawing(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            startX = (e.clientX || e.touches[0].clientX) - rect.left;
+            startY = (e.clientY || e.touches[0].clientY) - rect.top;
         }
 
-        [boxX1, boxY1, boxX2, boxY2].forEach(input => {
-            input.addEventListener('change', () => {
-                userBox = [
-                    parseFloat(boxX1.value) || 0,
-                    parseFloat(boxY1.value) || 0,
-                    parseFloat(boxX2.value) || 0,
-                    parseFloat(boxY2.value) || 0
-                ];
-            });
-        });
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const endX = (e.clientX || e.touches[0].clientX) - rect.left;
+            const endY = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            userBox = [startX, startY, endX - startX, endY - startY];
+        }
+
+        function endDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            drawButton.disabled = false;
+        }
 
         function drawDangerZone() {
             if (userBox) {
                 context.beginPath();
-                context.rect(
-                    Math.min(userBox[0], userBox[2]),
-                    Math.min(userBox[1], userBox[3]),
-                    Math.abs(userBox[2] - userBox[0]),
-                    Math.abs(userBox[3] - userBox[1])
-                );
+                context.rect(...userBox);
                 context.strokeStyle = 'red';
                 context.lineWidth = 2;
                 context.stroke();
@@ -156,7 +131,7 @@
                 // 위험지역 라벨 추가
                 context.font = '24px Arial';
                 context.fillStyle = 'red';
-                context.fillText('위험지역', Math.min(userBox[0], userBox[2]), Math.min(userBox[1], userBox[3]) - 10);
+                context.fillText('위험지역', userBox[0], userBox[1] - 10);
             }
         }
 
@@ -174,11 +149,7 @@
                     predictions.forEach(prediction => {
                         if (prediction.class === 'person' && userBox) {
                             const [x, y, width, height] = prediction.bbox;
-                            const [ux1, uy1, ux2, uy2] = userBox;
-                            const ux = Math.min(ux1, ux2);
-                            const uy = Math.min(uy1, uy2);
-                            const uwidth = Math.abs(ux2 - ux1);
-                            const uheight = Math.abs(uy2 - uy1);
+                            const [ux, uy, uwidth, uheight] = userBox;
                             
                             // 박스 간 겹침 확인
                             if (x < ux + uwidth &&
