@@ -40,6 +40,8 @@
                 <h2 class="text-primary fw-bold">Red Zone Detection</h2>
                 <p class="text-secondary">감지하고자 하는 부분으로 카메라를 조정하세요</p>
 
+                <button id="cameraToggleBtn" class="btn btn-info mb-2" onclick="toggleCamera()">전면 카메라로 전환</button>
+                <br>
                 <button id="boxBtn" class="btn btn-primary mb-2" onclick="setShape('box')">Box</button>
                 <button id="polygonBtn" class="btn btn-primary mb-2" onclick="setShape('polygon')">Polygon</button>
                 <button id="circleBtn" class="btn btn-primary mb-2" onclick="setShape('circle')">Circle</button>
@@ -60,6 +62,7 @@
         const ctx = canvas.getContext('2d');
         const closePolygonBtn = document.getElementById('closePolygonBtn');
         const siren = document.getElementById('siren');
+        const cameraToggleBtn = document.getElementById('cameraToggleBtn');
         let currentShape = 'box';
         let isDrawing = false;
         let startX, startY;
@@ -67,15 +70,22 @@
         let shapes = [];
         let tempShape = null;
         let model;
+        let isFrontCamera = false;
 
         function resizeCanvas() {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
         }
 
-        async function startCamera() {
+        async function startCamera(constraints = { video: { facingMode: 'environment' } }) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (window.stream) {
+                    window.stream.getTracks().forEach(track => {
+                        track.stop();
+                    });
+                }
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                window.stream = stream;
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
                     resizeCanvas();
@@ -85,6 +95,15 @@
             } catch (err) {
                 console.error("카메라 접근 오류:", err);
             }
+        }
+
+        function toggleCamera() {
+            isFrontCamera = !isFrontCamera;
+            const constraints = {
+                video: { facingMode: (isFrontCamera ? 'user' : 'environment') }
+            };
+            startCamera(constraints);
+            cameraToggleBtn.textContent = isFrontCamera ? '후면 카메라로 전환' : '전면 카메라로 전환';
         }
 
         async function loadCocoSsdModel() {
@@ -253,13 +272,16 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
             return [
-                (e.clientX - rect.left) * scaleX,
-                (e.clientY - rect.top) * scaleY
+                (clientX - rect.left) * scaleX,
+                (clientY - rect.top) * scaleY
             ];
         }
 
-        canvas.addEventListener('mousedown', (e) => {
+        function handleStart(e) {
+            e.preventDefault();
             const [x, y] = getCanvasCoordinates(e);
             if (currentShape === 'polygon') {
                 points.push([x, y]);
@@ -270,9 +292,11 @@
                 isDrawing = true;
                 [startX, startY] = [x, y];
             }
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function handleMove(e) {
+            e.preventDefault();
+            if (!isDrawing && currentShape !== 'polygon') return;
             const [x, y] = getCanvasCoordinates(e);
             
             switch(currentShape) {
@@ -293,9 +317,10 @@
                     }
                     break;
             }
-        });
+        }
 
-        canvas.addEventListener('mouseup', (e) => {
+        function handleEnd(e) {
+            e.preventDefault();
             if (!isDrawing && currentShape !== 'polygon') return;
             const [x, y] = getCanvasCoordinates(e);
             
@@ -307,7 +332,14 @@
                     isDrawing = false;
                     break;
             }
-        });
+        }
+
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', handleStart);
+        canvas.addEventListener('touchmove', handleMove);
+        canvas.addEventListener('touchend', handleEnd);
 
         startCamera();
     </script>
