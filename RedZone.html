@@ -39,161 +39,277 @@
             <div class="col text-center mt-2 mb-2">
                 <h2 class="text-primary fw-bold">Red Zone Detection</h2>
                 <p class="text-secondary">감지하고자 하는 부분으로 카메라를 조정하세요</p>
-                <button id="drawButton" class="btn btn-primary mb-2">박스 그리기</button>
-                <button id="clearButton" class="btn btn-secondary mb-2">지우기</button>
+
+                <button id="boxBtn" class="btn btn-primary mb-2" onclick="setShape('box')">Box</button>
+                <button id="polygonBtn" class="btn btn-primary mb-2" onclick="setShape('polygon')">Polygon</button>
+                <button id="circleBtn" class="btn btn-primary mb-2" onclick="setShape('circle')">Circle</button>
+                <button id="clearBtn" class="btn btn-secondary mb-2" onclick="clearCanvas()">Clear</button>
+                <button id="closePolygonBtn" class="btn btn-secondary mb-2" onclick="closePolygon()" style="display:none;">Polygon 닫기</button>
             </div>
         </div>
         <div class="video-container">
             <video id="video" autoplay muted playsinline></video>
             <canvas id="canvas"></canvas>
         </div>
-        <!-- 싸이렌 소리 추가 -->
         <audio id="siren" src="siren.mp3" preload="auto"></audio>
     </div>
 
     <script>
         const video = document.getElementById('video');
-        const canvas = document.getElementById("canvas");
-        const context = canvas.getContext("2d");
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const closePolygonBtn = document.getElementById('closePolygonBtn');
         const siren = document.getElementById('siren');
-        const drawButton = document.getElementById('drawButton');
-        const clearButton = document.getElementById('clearButton');
-
+        let currentShape = 'box';
         let isDrawing = false;
         let startX, startY;
-        let userBox = null;
+        let points = [];
+        let shapes = [];
+        let tempShape = null;
+        let model;
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-            .then(function (stream) {
-                video.srcObject = stream;
-            });
-
-        function adjustCanvasSize() {
+        function resizeCanvas() {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
         }
 
-        video.addEventListener('loadeddata', adjustCanvasSize);
-        window.addEventListener('resize', adjustCanvasSize);
-
-        drawButton.addEventListener('click', () => {
-            isDrawing = true;
-            drawButton.disabled = true;
-        });
-
-        clearButton.addEventListener('click', () => {
-            userBox = null;
-            drawButton.disabled = false;
-        });
-
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', endDrawing);
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', endDrawing);
-
-        function startDrawing(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            startX = (e.clientX || e.touches[0].clientX) - rect.left;
-            startY = (e.clientY || e.touches[0].clientY) - rect.top;
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    resizeCanvas();
+                    video.play();
+                    loadCocoSsdModel();
+                };
+            } catch (err) {
+                console.error("카메라 접근 오류:", err);
+            }
         }
 
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const endX = (e.clientX || e.touches[0].clientX) - rect.left;
-            const endY = (e.clientY || e.touches[0].clientY) - rect.top;
+        async function loadCocoSsdModel() {
+            model = await cocoSsd.load();
+            requestAnimationFrame(detectAndDraw);
+        }
+
+        async function detectAndDraw() {
+            const predictions = await model.detect(video);
             
-            userBox = [startX, startY, endX - startX, endY - startY];
-        }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            redrawShapes();
+            
+            let personInRedZone = false;
 
-        function endDrawing() {
-            if (!isDrawing) return;
-            isDrawing = false;
-            drawButton.disabled = false;
-        }
-
-        function drawDangerZone() {
-            if (userBox) {
-                context.beginPath();
-                context.rect(...userBox);
-                context.strokeStyle = 'red';
-                context.lineWidth = 2;
-                context.stroke();
-
-                context.fillStyle = 'rgba(255, 0, 0, 0.3)';
-                context.fill();
-
-                // 위험지역 라벨 추가
-                context.font = '24px Arial';
-                context.fillStyle = 'red';
-                context.fillText('위험지역', userBox[0], userBox[1] - 10);
-            }
-        }
-
-        cocoSsd.load().then(model => {
-            predict();
-            function predict() {
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                model.detect(canvas).then(predictions => {
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            for (let prediction of predictions) {
+                if (prediction.class === 'person') {
+                    const [x, y, width, height] = prediction.bbox;
                     
-                    drawDangerZone();
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, width, height);
 
-                    let personDetected = false;
-                    predictions.forEach(prediction => {
-                        if (prediction.class === 'person' && userBox) {
-                            const [x, y, width, height] = prediction.bbox;
-                            const [ux, uy, uwidth, uheight] = userBox;
-                            
-                            // 박스 간 겹침 확인
-                            if (x < ux + uwidth &&
-                                x + width > ux &&
-                                y < uy + uheight &&
-                                y + height > uy) {
-                                personDetected = true;
-                                context.fillStyle = 'rgba(255, 0, 0, 0.3)';
-                                context.fillRect(...prediction.bbox);
-                            }
-                        }
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(x, y - 20, 40, 20);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '16px Arial';
+                    ctx.fillText('사람', x + 5, y - 5);
 
-                        context.beginPath();
-                        context.lineWidth = 2;
-                        context.strokeStyle = prediction.class === 'person' ? 'red' : 'blue';
-                        context.rect(...prediction.bbox);
-                        context.stroke();
-
-                        // 텍스트 설정
-                        context.font = '32px Arial';
-                        var text = prediction.class + ' ' + parseInt(prediction.score * 100) + '%';
-                        var x = prediction.bbox[0];
-                        var y = prediction.bbox[1];
-
-                        var textWidth = context.measureText(text).width;
-                        var textHeight = parseInt(context.font, 10);
-
-                        context.fillStyle = context.strokeStyle;
-                        context.fillRect(x, y - textHeight, textWidth, textHeight);
-
-                        context.fillStyle = 'white';
-                        context.fillText(text, x, y);
-                    });
-
-                    if (personDetected) {
-                        siren.play();
-                    } else {
-                        siren.pause();
-                        siren.currentTime = 0;
+                    if (isInRedZone(x, y, width, height)) {
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                        ctx.fillRect(x, y, width, height);
+                        personInRedZone = true;
                     }
-                });
-                requestAnimationFrame(predict);
+                }
             }
-        });           
+
+            if (personInRedZone && siren.paused) {
+                siren.play();
+            } else if (!personInRedZone && !siren.paused) {
+                siren.pause();
+                siren.currentTime = 0;
+            }
+
+            if (tempShape) {
+                drawShape(tempShape);
+            }
+
+            requestAnimationFrame(detectAndDraw);
+        }
+
+        function isInRedZone(x, y, width, height) {
+            for (let shape of shapes) {
+                if (shape.type === 'box') {
+                    if (!(x > shape.x + shape.width || 
+                          x + width < shape.x || 
+                          y > shape.y + shape.height ||
+                          y + height < shape.y)) {
+                        return true;
+                    }
+                } else if (shape.type === 'circle') {
+                    const centerX = shape.x;
+                    const centerY = shape.y;
+                    const radius = shape.radius;
+                    const nearestX = Math.max(x, Math.min(centerX, x + width));
+                    const nearestY = Math.max(y, Math.min(centerY, y + height));
+                    const distance = Math.sqrt((nearestX - centerX) ** 2 + (nearestY - centerY) ** 2);
+                    if (distance < radius) {
+                        return true;
+                    }
+                } else if (shape.type === 'polygon') {
+                    const corners = [[x, y], [x + width, y], [x, y + height], [x + width, y + height]];
+                    for (let corner of corners) {
+                        if (isPointInPolygon(corner[0], corner[1], shape.points)) {
+                            return true;
+                        }
+                    }
+                    // Check if any polygon point is inside the person box
+                    for (let point of shape.points) {
+                        if (point[0] >= x && point[0] <= x + width && point[1] >= y && point[1] <= y + height) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isPointInPolygon(x, y, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                const intersect = ((yi > y) != (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function setShape(shape) {
+            currentShape = shape;
+            isDrawing = false;
+            points = [];
+            tempShape = null;
+            closePolygonBtn.style.display = 'none';
+            
+            if (shape === 'polygon') {
+                document.getElementById('boxBtn').style.display = 'none';
+                document.getElementById('circleBtn').style.display = 'none';
+                document.getElementById('polygonBtn').style.display = 'none';
+                document.getElementById('clearBtn').style.display = 'none';
+                closePolygonBtn.style.display = 'inline';
+            } else {
+                document.getElementById('boxBtn').style.display = 'inline';
+                document.getElementById('polygonBtn').style.display = 'inline';
+                document.getElementById('circleBtn').style.display = 'inline';
+                document.getElementById('clearBtn').style.display = 'inline';
+            }
+        }
+
+        function clearCanvas() {
+            shapes = [];
+            tempShape = null;
+            points = [];
+            closePolygonBtn.style.display = 'none';
+        }
+
+        function redrawShapes() {
+            shapes.forEach(shape => {
+                drawShape(shape);
+            });
+        }
+
+        function drawShape(shape) {
+            ctx.beginPath();
+            if (shape.type === 'box') {
+                ctx.rect(shape.x, shape.y, shape.width, shape.height);
+            } else if (shape.type === 'circle') {
+                ctx.arc(shape.x, shape.y, shape.radius, 0, 2 * Math.PI);
+            } else if (shape.type === 'polygon') {
+                ctx.moveTo(shape.points[0][0], shape.points[0][1]);
+                for (let i = 1; i < shape.points.length; i++) {
+                    ctx.lineTo(shape.points[i][0], shape.points[i][1]);
+                }
+                if (shape.closed) {
+                    ctx.closePath();
+                }
+            }
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function closePolygon() {
+            if (points.length > 2) {
+                shapes.push({type: 'polygon', points: [...points], closed: true});
+                points = [];
+                tempShape = null;
+                setShape('box');  // Reset to default shape after closing polygon
+            }
+        }
+
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return [
+                (e.clientX - rect.left) * scaleX,
+                (e.clientY - rect.top) * scaleY
+            ];
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const [x, y] = getCanvasCoordinates(e);
+            if (currentShape === 'polygon') {
+                points.push([x, y]);
+                if (points.length > 1) {
+                    closePolygonBtn.style.display = 'inline';
+                }
+            } else {
+                isDrawing = true;
+                [startX, startY] = [x, y];
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const [x, y] = getCanvasCoordinates(e);
+            
+            switch(currentShape) {
+                case 'box':
+                    if (isDrawing) {
+                        tempShape = {type: 'box', x: startX, y: startY, width: x - startX, height: y - startY};
+                    }
+                    break;
+                case 'polygon':
+                    if (points.length > 0) {
+                        tempShape = {type: 'polygon', points: [...points, [x, y]], closed: false};
+                    }
+                    break;
+                case 'circle':
+                    if (isDrawing) {
+                        const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+                        tempShape = {type: 'circle', x: startX, y: startY, radius: radius};
+                    }
+                    break;
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!isDrawing && currentShape !== 'polygon') return;
+            const [x, y] = getCanvasCoordinates(e);
+            
+            switch(currentShape) {
+                case 'box':
+                case 'circle':
+                    shapes.push(tempShape);
+                    tempShape = null;
+                    isDrawing = false;
+                    break;
+            }
+        });
+
+        startCamera();
     </script>
 </body>
 </html>
