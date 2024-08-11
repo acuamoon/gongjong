@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>문서 워드클라우드 생성기</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.6.1/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
+    <style>
+        #textInput {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+        }
+        #wordcloud {
+            width: 100%;
+            height: 0;
+            padding-bottom: 75%; /* 4:3 비율 유지 */
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+            position: relative;
+        }
+        #wordCountInput {
+            width: 100px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="nav-placeholder"></div>
+    <script> 
+        fetch('nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+    </script>
+
+    <div class="container mt-2">
+        <div class="row justify-content-center text-center">
+            <div class="col-md-8">
+                <h2 class="text-primary fw-bold mb-4">워드클라우드 생성기</h2>
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <div class="form-group">
+                            <label for="fileInput">PDF, PPT, DOC 파일을 선택하세요:</label>
+                            <input class="btn btn-outline-secondary" id="fileInput" type="file" name="file" accept=".pdf,.ppt,.pptx,.doc,.docx">
+                        </div>    
+                        <p></p>
+                        <textarea id="textInput" class="form-control" placeholder="PPT나 DOC 파일의 경우 여기에 텍스트를 붙여넣으세요." style="display:none;"></textarea>
+                        <button id="generateButton" class="btn btn-primary" style="display:none;">워드클라우드 생성</button>
+                        <div class="form-group mt-3">
+                            <label for="wordCountInput">표시할 단어 수:</label>
+                            <input type="number" id="wordCountInput" class="form-control d-inline-block" value="300" min="1" max="500">
+                            <button id="updateWordCount" class="btn btn-secondary">업데이트</button>
+                        </div>
+                    </div>
+                    <img id="img" class="card-img-top"/>
+                    <div id="wordcloud"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Improved error handling
+        function readFile(file) {
+            const fileType = file.name.split('.').pop().toLowerCase();
+            if (fileType === 'pdf') {
+                readPDF(file);
+            } else if (['ppt', 'pptx', 'doc', 'docx'].includes(fileType)) {
+                document.getElementById('textInput').style.display = 'block';
+                document.getElementById('generateButton').style.display = 'block';
+            } else {
+                alert('지원하지 않는 파일 형식입니다. PDF, PPT, DOC 파일만 지원합니다.');
+            }
+        }
+
+        function readPDF(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const typedarray = new Uint8Array(event.target.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    let text = '';
+                    let processedPages = 0;
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        pdf.getPage(i).then(function(page) {
+                            page.getTextContent().then(function(textContent) {
+                                text += textContent.items.map(item => item.str).join(' ');
+                                processedPages++;
+                                if (processedPages === pdf.numPages) {
+                                    extractWords(text);
+                                }
+                            }).catch(error => {
+                                console.error('Error getting text content:', error);
+                                alert('텍스트를 추출하는 중 오류가 발생했습니다.');
+                            });
+                        }).catch(error => {
+                            console.error('Error getting page:', error);
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error loading PDF document:', error);
+                    alert('PDF 문서를 읽는 중 오류가 발생했습니다.');
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 단어 추출
+        function extractWords(text) {
+            // 한글 단어 추출 (2글자 이상)
+            const words = text.match(/[가-힣]{2,}/g) || [];
+            allWords = words;
+            createWordCloud(words);
+        }
+
+        // 워드클라우드 생성
+        function createWordCloud(words) {
+            const frequency = {};
+            words.forEach(word => {
+                frequency[word] = (frequency[word] || 0) + 1;
+            });
+
+            const data = Object.entries(frequency)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, wordCount)
+                .map(([text, size]) => ({text, size}));
+
+            const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+            const wordcloudElement = document.getElementById("wordcloud");
+            const width = wordcloudElement.clientWidth;
+            const height = width * 0.75; // 4:3 비율 유지
+
+            d3.select("#wordcloud").html("");
+
+            const svg = d3.select("#wordcloud").append("svg")
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .style("position", "absolute")
+                .style("top", 0)
+                .style("left", 0);
+
+            d3.layout.cloud()
+                .size([width, height])
+                .words(data)
+                .padding(5)
+                .rotate(() => ~~(Math.random() * 2) * 90)
+                .font("Sans-serif")
+                .fontSize(d => Math.sqrt(d.size) * 10)
+                .on("end", draw)
+                .start();
+
+            function draw(words) {
+                svg.append("g")
+                    .attr("transform", `translate(${width/2},${height/2})`)
+                    .selectAll("text")
+                    .data(words)
+                    .enter().append("text")
+                    .style("font-size", d => `${d.size}px`)
+                    .style("font-family", "Sans-serif")
+                    .style("fill", (_, i) => color(i))
+                    .attr("text-anchor", "middle")
+                    .attr("transform", d => `translate(${d.x},${d.y})rotate(${d.rotate})`)
+                    .text(d => d.text);
+            }
+        }
+
+        let allWords = [];
+        let wordCount = 100;
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                readFile(file);
+            }
+        });
+
+        document.getElementById('generateButton').addEventListener('click', function() {
+            const text = document.getElementById('textInput').value;
+            if (text) {
+                extractWords(text);
+            }
+        });
+
+        document.getElementById('updateWordCount').addEventListener('click', function() {
+            const newWordCount = parseInt(document.getElementById('wordCountInput').value);
+            if (newWordCount > 0 && newWordCount <= 500) {
+                wordCount = newWordCount;
+                createWordCloud(allWords);
+            } else {
+                alert('단어 수는 1에서 500 사이의 값이어야 합니다.');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            createWordCloud(allWords);
+        });
+    </script>
+</body>
+</html>
