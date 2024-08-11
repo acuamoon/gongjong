@@ -169,8 +169,8 @@
                     const centerX = shape.x;
                     const centerY = shape.y;
                     const radius = shape.radius;
-                    const nearestX = Math.max(x, Math.min(centerX, x + width));
-                    const nearestY = Math.max(y, Math.min(centerY, y + height));
+                    const nearestX = Math.max(shape.x - radius, Math.min(centerX, x + width));
+                    const nearestY = Math.max(shape.y - radius, Math.min(centerY, y + height));
                     const distance = Math.sqrt((nearestX - centerX) ** 2 + (nearestY - centerY) ** 2);
                     if (distance < radius) {
                         return true;
@@ -272,8 +272,8 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            const clientX = e.clientX || e.touches[0].clientX;
-            const clientY = e.clientY || e.touches[0].clientY;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
             return [
                 (clientX - rect.left) * scaleX,
                 (clientY - rect.top) * scaleY
@@ -302,7 +302,8 @@
             switch(currentShape) {
                 case 'box':
                     if (isDrawing) {
-                        tempShape = {type: 'box', x: startX, y: startY, width: x - startX, height: y - startY};
+                        tempShape = {type: 'box', x: Math.min(startX, x), y: Math.min(startY, y), 
+                                     width: Math.abs(x - startX), height: Math.abs(y - startY)};
                     }
                     break;
                 case 'polygon':
