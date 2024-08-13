@@ -3,131 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 단어 분석 히트맵</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <title>PDF 단어 추출 및 Heatmap</title>
+    <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+    <script src="https://www.patrick-wied.at/static/heatmapjs/build/heatmap.min.js"></script>
     <style>
-        #heatmap {
-            width: 100%;
-            height: 500px;
-        }
-        .cell-hover {
-            position: absolute;
-            background-color: white;
-            border: 1px solid black;
-            padding: 5px;
-            display: none;
+        #heatmapContainer {
+            width: 600px;
+            height: 400px;
+            position: relative;
+            border: 1px solid #ccc;
         }
     </style>
 </head>
 <body>
-    <input type="file" id="file-input" accept="application/pdf">
-    <div id="heatmap"></div>
-    <div class="cell-hover"></div>
+    <input type="file" id="upload" accept="application/pdf" />
+    <div id="heatmapContainer"></div>
 
     <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
-
-        const fileInput = document.getElementById('file-input');
-        fileInput.addEventListener('change', handleFileSelect);
-
-        function handleFileSelect(event) {
+        document.getElementById('upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
-            if (file.type !== 'application/pdf') {
-                alert('PDF 파일만 업로드 가능합니다.');
-                return;
+            if (file && file.type === 'application/pdf') {
+                const fileReader = new FileReader();
+                fileReader.onload = function() {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                        let textContent = '';
+                        const numPages = pdf.numPages;
+
+                        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                            pdf.getPage(pageNum).then(function(page) {
+                                return page.getTextContent();
+                            }).then(function(text) {
+                                text.items.forEach(function(item) {
+                                    textContent += item.str + ' ';
+                                });
+
+                                if (pageNum === numPages) {
+                                    processText(textContent);
+                                }
+                            });
+                        }
+                    });
+                };
+                fileReader.readAsArrayBuffer(file);
             }
+        });
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const typedarray = new Uint8Array(e.target.result);
-                analyzePDF(typedarray);
-            };
-            reader.readAsArrayBuffer(file);
-        }
+        function processText(text) {
+            const words = text.split(/\s+/);
+            const wordCounts = {};
 
-        async function analyzePDF(data) {
-            const pdf = await pdfjsLib.getDocument({data: data}).promise;
-            let text = '';
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const content = await page.getTextContent();
-                text += content.items.map(item => item.str).join(' ');
-            }
-
-            const words = text.toLowerCase().match(/[\p{L}]+/gu);
-            const wordFreq = {};
             words.forEach(word => {
-                if (word.length > 1) {  // 2글자 이상의 단어만 포함
-                    wordFreq[word] = (wordFreq[word] || 0) + 1;
+                word = word.toLowerCase();
+                if (word) {
+                    wordCounts[word] = (wordCounts[word] || 0) + 1;
                 }
             });
 
-            const sortedWords = Object.entries(wordFreq)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 50);  // 상위 50개 단어만 선택
-
-            createHeatmap(sortedWords);
+            createHeatmap(wordCounts);
         }
 
-        function createHeatmap(data) {
-            const margin = {top: 30, right: 30, bottom: 30, left: 100};
-            const width = 800 - margin.left - margin.right;
-            const height = 500 - margin.top - margin.bottom;
+        function createHeatmap(wordCounts) {
+            const heatmapInstance = h337.create({
+                container: document.getElementById('heatmapContainer'),
+            });
 
-            d3.select("#heatmap").selectAll("*").remove();
+            const heatmapData = {
+                max: Math.max(...Object.values(wordCounts)),
+                data: []
+            };
 
-            const svg = d3.select("#heatmap")
-                .append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            const x = d3.scaleBand()
-                .range([0, width])
-                .domain(data.map(d => d[0]))
-                .padding(0.01);
-
-            svg.append("g")
-                .attr("transform", `translate(0, ${height})`)
-                .call(d3.axisBottom(x))
-                .selectAll("text")
-                .attr("transform", "translate(-10,0)rotate(-45)")
-                .style("text-anchor", "end");
-
-            const y = d3.scaleBand()
-                .range([height, 0])
-                .domain(data.map(d => d[0]))
-                .padding(0.01);
-
-            svg.append("g")
-                .call(d3.axisLeft(y));
-
-            const colorScale = d3.scaleSequential()
-                .interpolator(d3.interpolateInferno)
-                .domain([0, d3.max(data, d => d[1])]);
-
-            svg.selectAll()
-                .data(data)
-                .enter()
-                .append("rect")
-                .attr("x", d => x(d[0]))
-                .attr("y", d => y(d[0]))
-                .attr("width", x.bandwidth())
-                .attr("height", y.bandwidth())
-                .style("fill", d => colorScale(d[1]))
-                .on("mouseover", function(event, d) {
-                    const [x, y] = d3.pointer(event);
-                    d3.select(".cell-hover")
-                        .style("display", "block")
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 10) + "px")
-                        .html(`단어: ${d[0]}<br>빈도: ${d[1]}`);
-                })
-                .on("mouseout", function() {
-                    d3.select(".cell-hover").style("display", "none");
+            for (const word in wordCounts) {
+                heatmapData.data.push({
+                    x: Math.random() * 600, // X 좌표 (임의 값)
+                    y: Math.random() * 400, // Y 좌표 (임의 값)
+                    value: wordCounts[word] // 단어 빈도
                 });
+            }
+
+            heatmapInstance.setData(heatmapData);
         }
     </script>
 </body>
