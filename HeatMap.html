@@ -3,86 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 단어 추출 및 Heatmap</title>
-    <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
-    <script src="https://www.patrick-wied.at/static/heatmapjs/build/heatmap.min.js"></script>
+    <title>문서 워드클라우드 생성기</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+    </script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        #heatmapContainer {
-            width: 600px;
-            height: 400px;
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .card-container {
+            width: 100%;
+            max-width: 1200px; /* 최대 너비 설정 */
+            margin: 0 auto; /* 중앙 정렬 */
+            padding: 0 15px; /* 좌우 여백 */
+        }
+        .card {
+            width: 100%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: 0.3s;
+        }
+        .card:hover {
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        #heatmap {
+            width: 100%;
+            height: 0;
+            padding-bottom: 75%; /* 4:3 비율 유지 */
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
             position: relative;
-            border: 1px solid #ccc;
+        }
+        @media (min-width: 768px) {
+            .card-container {
+                padding: 0 30px;
+            }
+        }
+        @media (min-width: 992px) {
+            .card-container {
+                padding: 0 45px;
+            }
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .form-inline {
+            display: flex;
+            align-items: center;
+        }
+        .form-inline .form-control {
+            width: auto;
+            margin-right: 10px;
+        }
+        @media (max-width: 576px) {
+            .form-inline {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .form-inline .form-control {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <input type="file" id="upload" accept="application/pdf" />
-    <div id="heatmapContainer"></div>
+    <div id="nav-placeholder"></div>
+    <script> 
+        fetch('nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+    </script>
+
+    <div class="container mt-2">
+        <div class="row justify-content-center">
+            <div class="card-container">
+                <h2 class="text-primary fw-bold mb-4 text-center">워드클라우드 생성기</h2>
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <div class="form-group">
+                            <label for="fileInput">PDF, PPT, DOC 파일을 선택하세요:</label>
+                            <input class="btn btn-outline-secondary" id="fileInput" type="file" name="file" accept=".pdf,.ppt,.pptx,.doc,.docx">
+                        </div>    
+                        <p></p>
+                        <textarea id="textInput" class="form-control" placeholder="PPT나 DOC 파일의 경우 여기에 텍스트를 붙여넣으세요." style="display:none;"></textarea>
+                        <button id="generateButton" class="btn btn-primary" style="display:none;">워드클라우드 생성</button>
+                        <div class="form-group mt-3">
+                            <div class="form-inline">
+                                <label for="wordCountInput" class="mr-2">표시할 단어 수:</label>
+                                <input type="number" id="wordCountInput" class="form-control" value="300" min="1" max="500">
+                                <button id="updateWordCount" class="btn btn-secondary ml-2">업데이트</button>
+                            </div>
+                        </div>
+                    </div>
+                    <img id="img" class="card-img-top"/>
+                    <div id="heatmap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script>
-        document.getElementById('upload').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file && file.type === 'application/pdf') {
-                const fileReader = new FileReader();
-                fileReader.onload = function() {
-                    const typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                        let textContent = '';
-                        const numPages = pdf.numPages;
+        // Improved error handling
+        function readFile(file) {
+            const fileType = file.name.split('.').pop().toLowerCase();
+            if (fileType === 'pdf') {
+                readPDF(file);
+            } else if (['ppt', 'pptx', 'doc', 'docx'].includes(fileType)) {
+                document.getElementById('textInput').style.display = 'block';
+                document.getElementById('generateButton').style.display = 'block';
+            } else {
+                alert('지원하지 않는 파일 형식입니다. PDF, PPT, DOC 파일만 지원합니다.');
+            }
+        }
 
-                        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-                            pdf.getPage(pageNum).then(function(page) {
-                                return page.getTextContent();
-                            }).then(function(text) {
-                                text.items.forEach(function(item) {
-                                    textContent += item.str + ' ';
-                                });
-
-                                if (pageNum === numPages) {
-                                    processText(textContent);
+        function readPDF(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const typedarray = new Uint8Array(event.target.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    let text = '';
+                    let processedPages = 0;
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        pdf.getPage(i).then(function(page) {
+                            page.getTextContent().then(function(textContent) {
+                                text += textContent.items.map(item => item.str).join(' ');
+                                processedPages++;
+                                if (processedPages === pdf.numPages) {
+                                    extractWords(text);
                                 }
+                            }).catch(error => {
+                                console.error('Error getting text content:', error);
+                                alert('텍스트를 추출하는 중 오류가 발생했습니다.');
                             });
-                        }
-                    });
-                };
-                fileReader.readAsArrayBuffer(file);
+                        }).catch(error => {
+                            console.error('Error getting page:', error);
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error loading PDF document:', error);
+                    alert('PDF 문서를 읽는 중 오류가 발생했습니다.');
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 단어 추출
+        function extractWords(text) {
+            // 한글 단어 추출 (2글자 이상)
+            const words = text.match(/[가-힣]{2,}/g) || [];
+            allWords = words;
+            createHeatMap(words);
+        }
+
+        // 히트맵 생성
+        function createHeatMap(words) {
+            const frequency = {};
+            words.forEach(word => {
+                frequency[word] = (frequency[word] || 0) + 1;
+            });
+
+            const data = Object.entries(frequency)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, wordCount)
+                .map(([text, size]) => ({text, size}));
+
+            const heatmapElement = document.getElementById("heatmap");
+            const width = heatmapElement.clientWidth;
+            const height = width * 0.75; // 4:3 비율 유지
+
+            d3.select("#heatmap").html("");
+
+            const svg = d3.select("#heatmap").append("svg")
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .style("position", "absolute")
+                .style("top", 0)
+                .style("left", 0);
+
+            const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
+                .domain([0, d3.max(data, d => d.size)]);
+
+            const sizeScale = d3.scaleSqrt()
+                .domain([0, d3.max(data, d => d.size)])
+                .range([30, 100]);
+
+            const fontSizeScale = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.size)])
+                .range([10, 24]);
+
+            const treemap = d3.treemap()
+                .size([width, height])
+                .padding(1)
+                .round(true);
+
+            const root = d3.hierarchy({children: data})
+                .sum(d => d.size);
+
+            treemap(root);
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            const cell = svg.selectAll("g")
+                .data(root.leaves())
+                .enter().append("g")
+                .attr("transform", d => `translate(${d.x0},${d.y0})`)
+                .on("mouseover", function(event, d) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html(`단어: ${d.data.text}<br/>빈도: ${d.data.size}`)
+                        .style("left", (event.pageX) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function(d) {
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+
+            cell.append("rect")
+                .attr("width", d => d.x1 - d.x0)
+                .attr("height", d => d.y1 - d.y0)
+                .attr("fill", d => colorScale(d.data.size))
+                .style("cursor", "pointer");
+
+            cell.append("text")
+                .attr("x", d => (d.x1 - d.x0) / 2)
+                .attr("y", d => (d.y1 - d.y0) / 2)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .attr("fill", d => d3.lab(colorScale(d.data.size)).l < 50 ? "white" : "black")
+                .style("font-family", "'Noto Sans KR', sans-serif")
+                .style("font-weight", "700")
+                .style("font-size", d => `${Math.min(fontSizeScale(d.data.size), (d.x1 - d.x0) / d.data.text.length, (d.y1 - d.y0) / 2)}px`)
+                .style("pointer-events", "none")
+                .text(d => d.data.text);
+        }
+
+        let allWords = [];
+        let wordCount = 100;
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                readFile(file);
             }
         });
 
-        function processText(text) {
-            const words = text.split(/\s+/);
-            const wordCounts = {};
-
-            words.forEach(word => {
-                word = word.toLowerCase();
-                if (word) {
-                    wordCounts[word] = (wordCounts[word] || 0) + 1;
-                }
-            });
-
-            createHeatmap(wordCounts);
-        }
-
-        function createHeatmap(wordCounts) {
-            const heatmapInstance = h337.create({
-                container: document.getElementById('heatmapContainer'),
-            });
-
-            const heatmapData = {
-                max: Math.max(...Object.values(wordCounts)),
-                data: []
-            };
-
-            for (const word in wordCounts) {
-                heatmapData.data.push({
-                    x: Math.random() * 600, // X 좌표 (임의 값)
-                    y: Math.random() * 400, // Y 좌표 (임의 값)
-                    value: wordCounts[word] // 단어 빈도
-                });
+        document.getElementById('generateButton').addEventListener('click', function() {
+            const text = document.getElementById('textInput').value;
+            if (text) {
+                extractWords(text);
             }
+        });
 
-            heatmapInstance.setData(heatmapData);
-        }
+        document.getElementById('updateWordCount').addEventListener('click', function() {
+            const newWordCount = parseInt(document.getElementById('wordCountInput').value);
+            if (newWordCount > 0 && newWordCount <= 500) {
+                wordCount = newWordCount;
+                createHeatMap(allWords);
+            } else {
+                alert('단어 수는 1에서 500 사이의 값이어야 합니다.');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            createHeatMap(allWords);
+        });
     </script>
 </body>
 </html>
