@@ -80,14 +80,14 @@
 </head>
 <body>
     <div id="nav-placeholder"></div>
-    <script> 
+    <script>
         fetch('nav.html')
             .then(response => response.text())
             .then(data => {
                 document.getElementById('nav-placeholder').innerHTML = data;
             });
     </script>
-    <div id="nav-placeholder"></div>
+
     <div class="container mt-2">
         <div class="row justify-content-center">
             <div class="card-container">
