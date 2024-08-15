@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>문서 워드클라우드 생성기</title>
+    <title>HeapMap 생성기</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
     <script>
@@ -56,7 +56,7 @@
             font-size: 12px;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.2s;
         }
         .form-inline {
             display: flex;
@@ -87,15 +87,14 @@
                 document.getElementById('nav-placeholder').innerHTML = data;
             });
     </script>
-
+    <div id="nav-placeholder"></div>
     <div class="container mt-2">
         <div class="row justify-content-center">
             <div class="card-container">
-                <h2 class="text-primary fw-bold mb-4 text-center">워드클라우드 생성기</h2>
+                <h2 class="text-primary fw-bold mb-4 text-center">HeatMap 생성기</h2>
                 <div class="card mt-4">
                     <div class="card-header">
                         <div class="form-group">
-                            <label for="fileInput">PDF, PPT, DOC 파일을 선택하세요:</label>
                             <input class="btn btn-outline-secondary" id="fileInput" type="file" name="file" accept=".pdf,.ppt,.pptx,.doc,.docx">
                         </div>    
                         <p></p>
@@ -107,6 +106,10 @@
                                 <input type="number" id="wordCountInput" class="form-control" value="300" min="1" max="500">
                                 <button id="updateWordCount" class="btn btn-secondary ml-2">업데이트</button>
                             </div>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="excludeWords">제외할 단어 (쉼표로 구분):</label>
+                            <input type="text" id="excludeWords" class="form-control" placeholder="예: 그리고,그래서,하지만">
                         </div>
                     </div>
                     <img id="img" class="card-img-top"/>
@@ -162,12 +165,31 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // 단어 추출
+        // 제외할 단어 목록
+        let excludedWords = [];
+
+        // extractWords 함수 수정
         function extractWords(text) {
             // 한글 단어 추출 (2글자 이상)
-            const words = text.match(/[가-힣]{2,}/g) || [];
-            allWords = words;
-            createHeatMap(words);
+            const koreanWords = text.match(/[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]{2,}/g) || [];
+            
+            // 영어 단어 추출 (3글자 이상)
+            const englishWords = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
+            
+            allWords = koreanWords.concat(englishWords);
+            
+            // 제외할 단어 처리
+            allWords = allWords.map(word => {
+                let processedWord = word;
+                excludedWords.forEach(excludeWord => {
+                    if (processedWord.endsWith(excludeWord)) {
+                        processedWord = processedWord.slice(0, -excludeWord.length);
+                    }
+                });
+                return processedWord;
+            }).filter(word => word.length >= 2); // 2글자 미만인 단어 제거
+            
+            createHeatMap(allWords);
         }
 
         // 히트맵 생성
@@ -219,24 +241,29 @@
 
             const tooltip = d3.select("body").append("div")
                 .attr("class", "tooltip")
-                .style("opacity", 0);
+                .style("opacity", 0)
+                .style("position", "absolute")
+                .style("pointer-events", "none");
 
             const cell = svg.selectAll("g")
                 .data(root.leaves())
                 .enter().append("g")
                 .attr("transform", d => `translate(${d.x0},${d.y0})`)
-                .on("mouseover", function(event, d) {
-                    tooltip.transition()
-                        .duration(200)
-                        .style("opacity", .9);
-                    tooltip.html(`단어: ${d.data.text}<br/>빈도: ${d.data.size}`)
-                        .style("left", (event.pageX) + "px")
+                .on("click", function(event, d) {
+                    event.stopPropagation();
+                    tooltip.style("opacity", .9)
+                        .html(`단어: ${d.data.text}<br/>빈도: ${d.data.size}`)
+                        .style("left", (event.pageX + 10) + "px")
                         .style("top", (event.pageY - 28) + "px");
+                    
+                    // 0.2초 후에 툴팁 숨기기
+                    setTimeout(() => {
+                        tooltip.style("opacity", 0);
+                    }, 200);
                 })
-                .on("mouseout", function(d) {
-                    tooltip.transition()
-                        .duration(500)
-                        .style("opacity", 0);
+                .on("dblclick", function(event, d) {
+                    event.stopPropagation();
+                    addExcludedWord(d.data.text);
                 });
 
             cell.append("rect")
@@ -256,6 +283,21 @@
                 .style("font-size", d => `${Math.min(fontSizeScale(d.data.size), (d.x1 - d.x0) / d.data.text.length, (d.y1 - d.y0) / 2)}px`)
                 .style("pointer-events", "none")
                 .text(d => d.data.text);
+
+            // 히트맵 영역을 클릭할 때 툴팁 숨기기
+            svg.on("click", function() {
+                tooltip.style("opacity", 0);
+            });
+        }
+
+        // 제외 단어 추가 함수
+        function addExcludedWord(word) {
+            if (!excludedWords.includes(word)) {
+                excludedWords.push(word);
+                document.getElementById('excludeWords').value = excludedWords.join(',');
+                d3.select("#heatmap").selectAll("*").remove(); // 기존 히트맵 제거
+                extractWords(allWords.join(' ')); // 단어 목록을 다시 처리
+            }
         }
 
         let allWords = [];
@@ -277,9 +319,12 @@
 
         document.getElementById('updateWordCount').addEventListener('click', function() {
             const newWordCount = parseInt(document.getElementById('wordCountInput').value);
+            const newExcludedWords = document.getElementById('excludeWords').value.split(',').map(word => word.trim());
+            
             if (newWordCount > 0 && newWordCount <= 500) {
                 wordCount = newWordCount;
-                createHeatMap(allWords);
+                excludedWords = newExcludedWords;
+                extractWords(allWords.join(' ')); // 단어 목록을 다시 처리
             } else {
                 alert('단어 수는 1에서 500 사이의 값이어야 합니다.');
             }
